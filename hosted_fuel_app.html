@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aircraft Fuel App</title>
+  <style>
+    :root {
+      --bg: #f4f7f8;
+      --panel: #ffffff;
+      --panel-soft: #eef3f4;
+      --line: #d7e0e3;
+      --line-strong: #b6c5ca;
+      --text: #17313a;
+      --muted: #5f7881;
+      --accent: #005b73;
+      --success: #0f7a4b;
+      --danger: #b43f3f;
+      --shadow: 0 18px 40px rgba(23, 49, 58, 0.08);
+      --radius: 18px;
+      --radius-sm: 12px;
+      --mono: "SFMono-Regular", "Menlo", "Monaco", monospace;
+      --sans: "Avenir Next", "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--text);
+      background:
+        radial-gradient(circle at top right, rgba(0, 91, 115, 0.08), transparent 24%),
+        linear-gradient(180deg, #f9fbfb 0%, var(--bg) 100%);
+      min-height: 100vh;
+    }
+    .shell { max-width: 1180px; margin: 0 auto; padding: 28px 18px 48px; }
+    .hero {
+      background: linear-gradient(135deg, #0a4b5d 0%, #0f6d82 100%);
+      color: #fff;
+      border-radius: 26px;
+      padding: 28px;
+      box-shadow: var(--shadow);
+      margin-bottom: 22px;
+    }
+    .hero h1 { margin: 0; font-size: clamp(28px, 4vw, 40px); line-height: 1.05; letter-spacing: -0.03em; }
+    .hero p { margin: 10px 0 0; max-width: 760px; color: rgba(255, 255, 255, 0.84); font-size: 15px; }
+    .layout { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 22px; }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+    .panel-head { padding: 20px 22px 0; }
+    .panel-head h2, .panel-head h3 { margin: 0; font-size: 18px; }
+    .panel-head p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+    .panel-body { padding: 22px; }
+    .status {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: #ddf6e8;
+      color: var(--success);
+      font-size: 12px;
+      font-weight: 700;
+      margin-top: 14px;
+    }
+    .warning {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: #fff4e5;
+      color: #7a4b00;
+      font-size: 13px;
+      display: none;
+    }
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 18px; }
+    .tab {
+      border: 1px solid var(--line);
+      background: var(--panel-soft);
+      color: var(--muted);
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .field { margin-bottom: 14px; }
+    .field.full { grid-column: 1 / -1; }
+    label { display: block; font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 7px; }
+    input, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+      padding: 12px 13px;
+      outline: none;
+    }
+    input:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(0, 91, 115, 0.12);
+    }
+    textarea { resize: vertical; min-height: 88px; }
+    .button-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; margin-top: 10px; }
+    button {
+      border: 1px solid var(--line-strong);
+      background: #fff;
+      color: var(--text);
+      border-radius: 999px;
+      padding: 11px 16px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .summary-grid, .stats-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .summary-item, .stat-card { background: var(--panel-soft); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
+    .summary-label, .stat-label { font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+    .summary-value, .stat-value { font-size: 19px; font-weight: 700; }
+    .summary-value.small { font-size: 15px; font-weight: 600; }
+    .signature-wrap { margin-top: 18px; border: 1px dashed var(--line-strong); border-radius: 18px; padding: 14px; background: #fbfdfd; }
+    canvas { width: 100%; height: 220px; display: block; border-radius: 14px; background: #fff; border: 1px solid var(--line); touch-action: none; }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    .list { display: flex; flex-direction: column; gap: 12px; }
+    .record-card, .aircraft-card { border: 1px solid var(--line); background: #fff; border-radius: 16px; padding: 16px; }
+    .record-top, .aircraft-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+    .reg { font-family: var(--mono); font-weight: 700; font-size: 15px; background: var(--panel-soft); padding: 6px 10px; border-radius: 999px; display: inline-block; }
+    .meta { color: var(--muted); font-size: 13px; margin-top: 8px; line-height: 1.5; }
+    .liters { font-size: 26px; font-weight: 800; white-space: nowrap; }
+    .badge { display: inline-block; margin-top: 10px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; background: #ddf6e8; color: var(--success); }
+    .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+    .toolbar input { flex: 1 1 220px; }
+    .empty { padding: 28px 18px; text-align: center; color: var(--muted); border: 1px dashed var(--line-strong); border-radius: 16px; background: #fbfdfd; }
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      background: #16313a;
+      color: #fff;
+      padding: 14px 16px;
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: 0.2s ease;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    @media (max-width: 920px) { .layout { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) { .grid, .summary-grid, .stats-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <h1>Aircraft Fuel App</h1>
+      <p>Internet-hosted shared fuel logging for multiple people. Users enter litres before filling and after filling, and the app calculates the added fuel automatically.</p>
+      <div class="status">Supabase shared mode</div>
+      <div class="warning" id="config-warning">Supabase is not configured yet. Add your project URL and anon key to <code>config.js</code>.</div>
+    </section>
+
+    <div class="layout">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Fueling Workflow</h2>
+          <p>Public web version backed by one shared database.</p>
+        </div>
+        <div class="panel-body">
+          <div class="tabs">
+            <button class="tab active" data-tab="new-report">New report</button>
+            <button class="tab" data-tab="records">Records</button>
+            <button class="tab" data-tab="aircraft">Aircraft</button>
+          </div>
+
+          <div class="tab-pane active" id="tab-new-report">
+            <div id="report-step-1">
+              <div class="grid">
+                <div class="field">
+                  <label for="fueler-name">Fueler name</label>
+                  <input id="fueler-name" placeholder="Required" />
+                </div>
+                <div class="field">
+                  <label for="pilot-name">Pilot name</label>
+                  <input id="pilot-name" placeholder="Required" />
+                </div>
+                <div class="field">
+                  <label for="aircraft-reg">Aircraft registration</label>
+                  <input id="aircraft-reg" placeholder="OY-ABC" />
+                </div>
+                <div class="field">
+                  <label for="fuel-location">Airport / location</label>
+                  <input id="fuel-location" placeholder="EKRK" />
+                </div>
+                <div class="field">
+                  <label for="fuel-before">Fuel before filling (litres)</label>
+                  <input id="fuel-before" type="number" min="0" step="0.1" placeholder="0.0" />
+                </div>
+                <div class="field">
+                  <label for="fuel-after">Fuel after filling (litres)</label>
+                  <input id="fuel-after" type="number" min="0" step="0.1" placeholder="0.0" />
+                </div>
+                <div class="field">
+                  <label for="fuel-datetime">Date and time</label>
+                  <input id="fuel-datetime" type="datetime-local" />
+                </div>
+                <div class="field">
+                  <label for="fuel-added">Calculated added fuel (litres)</label>
+                  <input id="fuel-added" readonly placeholder="Calculated automatically" />
+                </div>
+                <div class="field full">
+                  <label for="fuel-notes">Notes</label>
+                  <textarea id="fuel-notes" placeholder="Optional remarks for the report"></textarea>
+                </div>
+              </div>
+              <div class="button-row">
+                <button class="primary" id="to-review">Review report</button>
+              </div>
+            </div>
+
+            <div id="report-step-2" style="display:none">
+              <div class="summary-grid" id="review-summary"></div>
+              <div class="signature-wrap">
+                <label>Pilot signature</label>
+                <canvas id="signature-pad" width="900" height="220"></canvas>
+                <div class="hint">The report cannot be saved until the pilot signs here.</div>
+                <div class="button-row">
+                  <button id="clear-signature">Clear signature</button>
+                  <button class="primary" id="save-report">Save report</button>
+                </div>
+              </div>
+              <div class="button-row">
+                <button id="back-to-form">Back to form</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="tab-records">
+            <div class="toolbar">
+              <input id="record-search" placeholder="Search by registration, fueler, pilot, or location" />
+              <button id="refresh-data">Refresh</button>
+              <button id="export-excel">Export Excel</button>
+            </div>
+            <div class="list" id="records-list"></div>
+          </div>
+
+          <div class="tab-pane" id="tab-aircraft">
+            <div class="grid">
+              <div class="field">
+                <label for="new-aircraft-reg">Registration</label>
+                <input id="new-aircraft-reg" placeholder="OY-ABC" />
+              </div>
+              <div class="field">
+                <label for="new-aircraft-type">Aircraft type</label>
+                <input id="new-aircraft-type" placeholder="Cessna 172" />
+              </div>
+              <div class="field">
+                <label for="new-aircraft-owner">Operator / owner</label>
+                <input id="new-aircraft-owner" placeholder="Club or company" />
+              </div>
+              <div class="field">
+                <label for="new-aircraft-capacity">Tank capacity (litres)</label>
+                <input id="new-aircraft-capacity" type="number" min="0" step="0.1" placeholder="200" />
+              </div>
+            </div>
+            <div class="button-row">
+              <button class="primary" id="add-aircraft">Save aircraft</button>
+            </div>
+            <div class="list" id="aircraft-list" style="margin-top:18px"></div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <div class="panel-head">
+          <h3>Shared Summary</h3>
+          <p>All devices connected to this hosted app write to the same Supabase project.</p>
+        </div>
+        <div class="panel-body">
+          <div class="stats-grid">
+            <div class="stat-card"><div class="stat-label">Reports saved</div><div class="stat-value" id="stat-reports">0</div></div>
+            <div class="stat-card"><div class="stat-label">Total litres</div><div class="stat-value" id="stat-litres">0</div></div>
+            <div class="stat-card"><div class="stat-label">Aircraft tracked</div><div class="stat-value" id="stat-aircraft">0</div></div>
+            <div class="stat-card"><div class="stat-label">Average litres / report</div><div class="stat-value" id="stat-average">0</div></div>
+          </div>
+          <div style="margin-top:18px">
+            <h3 style="margin:0 0 12px">Fuel by aircraft</h3>
+            <div class="list" id="summary-by-aircraft"></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./config.js"></script>
+  <script>
+    let records = [];
+    let aircraft = [];
+    let draftReport = null;
+    let signatureDirty = false;
+    let supabaseClient = null;
+
+    const tabs = document.querySelectorAll(".tab");
+    const panes = document.querySelectorAll(".tab-pane");
+    const signatureCanvas = document.getElementById("signature-pad");
+    const signatureCtx = signatureCanvas.getContext("2d");
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove("show"), 2200);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[char]));
+    }
+
+    function escapeXml(value) {
+      return String(value ?? "").replace(/[<>&'"]/g, (char) => ({
+        "<": "&lt;",
+        ">": "&gt;",
+        "&": "&amp;",
+        "'": "&apos;",
+        '"': "&quot;"
+      }[char]));
+    }
+
+    function formatDateTime(value) {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      }).format(date);
+    }
+
+    function setCurrentDateTime() {
+      const now = new Date();
+      const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+      document.getElementById("fuel-datetime").value = local.toISOString().slice(0, 16);
+    }
+
+    function normalizeRegistration(value) {
+      return value.trim().toUpperCase();
+    }
+
+    function calculateAdded(beforeLiters, afterLiters) {
+      if (!Number.isFinite(beforeLiters) || !Number.isFinite(afterLiters)) {
+        return NaN;
+      }
+      return Number((afterLiters - beforeLiters).toFixed(1));
+    }
+
+    function updateAddedPreview() {
+      const beforeLiters = parseFloat(document.getElementById("fuel-before").value);
+      const afterLiters = parseFloat(document.getElementById("fuel-after").value);
+      const added = calculateAdded(beforeLiters, afterLiters);
+      document.getElementById("fuel-added").value = Number.isFinite(added) ? `${added.toFixed(1)} L` : "";
+    }
+
+    function collectForm() {
+      const beforeLiters = parseFloat(document.getElementById("fuel-before").value);
+      const afterLiters = parseFloat(document.getElementById("fuel-after").value);
+      return {
+        fueler_name: document.getElementById("fueler-name").value.trim(),
+        pilot_name: document.getElementById("pilot-name").value.trim(),
+        registration: normalizeRegistration(document.getElementById("aircraft-reg").value),
+        before_liters: beforeLiters,
+        after_liters: afterLiters,
+        liters_added: calculateAdded(beforeLiters, afterLiters),
+        fueled_at: document.getElementById("fuel-datetime").value,
+        location: document.getElementById("fuel-location").value.trim().toUpperCase(),
+        notes: document.getElementById("fuel-notes").value.trim()
+      };
+    }
+
+    function validateForm(data) {
+      if (!data.fueler_name) return "Fueler name is required.";
+      if (!data.pilot_name) return "Pilot name is required.";
+      if (!data.registration) return "Aircraft registration is required.";
+      if (!Number.isFinite(data.before_liters) || data.before_liters < 0) return "Fuel before filling must be 0 litres or more.";
+      if (!Number.isFinite(data.after_liters) || data.after_liters < 0) return "Fuel after filling must be 0 litres or more.";
+      if (data.after_liters < data.before_liters) return "Fuel after filling must be greater than or equal to fuel before filling.";
+      if (!Number.isFinite(data.liters_added) || data.liters_added <= 0) return "Calculated added litres must be greater than 0.";
+      if (!data.fueled_at) return "Date and time are required.";
+      return "";
+    }
+
+    function switchTab(tabName) {
+      tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === tabName));
+      panes.forEach((pane) => pane.classList.toggle("active", pane.id === "tab-" + tabName));
+      if (tabName === "records") renderRecords();
+      if (tabName === "aircraft") renderAircraft();
+    }
+
+    function showStep(step) {
+      document.getElementById("report-step-1").style.display = step === 1 ? "block" : "none";
+      document.getElementById("report-step-2").style.display = step === 2 ? "block" : "none";
+    }
+
+    function resetSignaturePad() {
+      signatureCtx.fillStyle = "#ffffff";
+      signatureCtx.fillRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+      signatureCtx.lineJoin = "round";
+      signatureCtx.lineCap = "round";
+      signatureCtx.lineWidth = 2.6;
+      signatureCtx.strokeStyle = "#17313a";
+      signatureDirty = false;
+    }
+
+    function initSignaturePad() {
+      let drawing = false;
+      function pointFromEvent(event) {
+        const rect = signatureCanvas.getBoundingClientRect();
+        const source = event.touches ? event.touches[0] : event;
+        return {
+          x: (source.clientX - rect.left) * (signatureCanvas.width / rect.width),
+          y: (source.clientY - rect.top) * (signatureCanvas.height / rect.height)
+        };
+      }
+      function start(event) {
+        drawing = true;
+        const point = pointFromEvent(event);
+        signatureCtx.beginPath();
+        signatureCtx.moveTo(point.x, point.y);
+        signatureDirty = true;
+        event.preventDefault();
+      }
+      function move(event) {
+        if (!drawing) return;
+        const point = pointFromEvent(event);
+        signatureCtx.lineTo(point.x, point.y);
+        signatureCtx.stroke();
+        event.preventDefault();
+      }
+      function end() { drawing = false; }
+      signatureCanvas.addEventListener("mousedown", start);
+      signatureCanvas.addEventListener("mousemove", move);
+      window.addEventListener("mouseup", end);
+      signatureCanvas.addEventListener("touchstart", start, { passive: false });
+      signatureCanvas.addEventListener("touchmove", move, { passive: false });
+      signatureCanvas.addEventListener("touchend", end);
+    }
+
+    async function fetchState() {
+      const [{ data: reportData, error: reportError }, { data: aircraftData, error: aircraftError }] = await Promise.all([
+        supabaseClient.from("fuel_reports").select("*").order("fueled_at", { ascending: false }),
+        supabaseClient.from("aircraft").select("*").order("registration", { ascending: true })
+      ]);
+      if (reportError) throw reportError;
+      if (aircraftError) throw aircraftError;
+      records = reportData || [];
+      aircraft = aircraftData || [];
+      renderRecords();
+      renderAircraft();
+      renderSummary();
+    }
+
+    function renderReview(data) {
+      const match = aircraft.find((item) => item.registration === data.registration);
+      const items = [
+        ["Fueler", data.fueler_name],
+        ["Pilot", data.pilot_name],
+        ["Aircraft", data.registration],
+        ["Aircraft type", match?.type || "Not in aircraft list"],
+        ["Before filling", data.before_liters.toFixed(1) + " L"],
+        ["After filling", data.after_liters.toFixed(1) + " L"],
+        ["Added", data.liters_added.toFixed(1) + " L"],
+        ["Date and time", formatDateTime(data.fueled_at)],
+        ["Location", data.location || "Not set"],
+        ["Notes", data.notes || "None"]
+      ];
+      document.getElementById("review-summary").innerHTML = items.map(([label, value]) => `
+        <div class="summary-item">
+          <div class="summary-label">${escapeHtml(label)}</div>
+          <div class="summary-value small">${escapeHtml(value)}</div>
+        </div>
+      `).join("");
+    }
+
+    async function saveRecord() {
+      if (!draftReport) {
+        showToast("Please review the report first.");
+        return;
+      }
+      if (!signatureDirty) {
+        showToast("Pilot signature is required.");
+        return;
+      }
+      const payload = { ...draftReport, signature_data_url: signatureCanvas.toDataURL("image/png") };
+      const { error } = await supabaseClient.from("fuel_reports").insert(payload);
+      if (error) {
+        showToast(error.message || "Could not save record.");
+        return;
+      }
+      clearForm();
+      await fetchState();
+      showToast("Report saved.");
+    }
+
+    function clearForm() {
+      ["fueler-name", "pilot-name", "aircraft-reg", "fuel-location", "fuel-before", "fuel-after", "fuel-added", "fuel-notes"].forEach((id) => {
+        document.getElementById(id).value = "";
+      });
+      setCurrentDateTime();
+      resetSignaturePad();
+      draftReport = null;
+      showStep(1);
+    }
+
+    function renderRecords() {
+      const list = document.getElementById("records-list");
+      const query = document.getElementById("record-search").value.trim().toLowerCase();
+      const filtered = records.filter((record) => {
+        if (!query) return true;
+        return [
+          record.registration,
+          record.fueler_name,
+          record.pilot_name,
+          record.location,
+          record.notes
+        ].join(" ").toLowerCase().includes(query);
+      });
+      if (!filtered.length) {
+        list.innerHTML = '<div class="empty">No shared fuel reports yet.</div>';
+        return;
+      }
+      list.innerHTML = filtered.map((record) => `
+        <article class="record-card">
+          <div class="record-top">
+            <div>
+              <div class="reg">${escapeHtml(record.registration)}</div>
+              <div class="meta">
+                ${formatDateTime(record.fueled_at)}<br />
+                Fueler: ${escapeHtml(record.fueler_name)}<br />
+                Pilot: ${escapeHtml(record.pilot_name)}<br />
+                Before/After: ${escapeHtml(Number(record.before_liters).toFixed(1))} L / ${escapeHtml(Number(record.after_liters).toFixed(1))} L${record.location ? "<br />Location: " + escapeHtml(record.location) : ""}
+              </div>
+              <div class="badge">Pilot signed</div>
+            </div>
+            <div style="text-align:right">
+              <div class="liters">${Number(record.liters_added).toFixed(1)} L</div>
+            </div>
+          </div>
+          ${record.notes ? `<div class="meta" style="margin-top:12px">Notes: ${escapeHtml(record.notes)}</div>` : ""}
+        </article>
+      `).join("");
+    }
+
+    function renderAircraft() {
+      const list = document.getElementById("aircraft-list");
+      if (!aircraft.length) {
+        list.innerHTML = '<div class="empty">No aircraft saved yet.</div>';
+        return;
+      }
+      list.innerHTML = aircraft.map((item) => {
+        const total = records.filter((record) => record.registration === item.registration).reduce((sum, record) => sum + Number(record.liters_added), 0);
+        return `
+          <article class="aircraft-card">
+            <div class="aircraft-top">
+              <div>
+                <div class="reg">${escapeHtml(item.registration)}</div>
+                <div class="meta">
+                  ${escapeHtml(item.type || "Aircraft type not set")}<br />
+                  ${escapeHtml(item.owner || "Owner not set")}${item.capacity_liters != null ? "<br />Tank capacity: " + escapeHtml(Number(item.capacity_liters).toFixed(1)) + " L" : ""}
+                </div>
+              </div>
+              <div style="text-align:right">
+                <div class="summary-label">Total added</div>
+                <div class="summary-value">${total.toFixed(1)} L</div>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderSummary() {
+      const total = records.reduce((sum, record) => sum + Number(record.liters_added), 0);
+      const average = records.length ? total / records.length : 0;
+      document.getElementById("stat-reports").textContent = records.length;
+      document.getElementById("stat-litres").textContent = total.toFixed(1);
+      document.getElementById("stat-aircraft").textContent = aircraft.length;
+      document.getElementById("stat-average").textContent = average.toFixed(1);
+      const grouped = new Map();
+      records.forEach((record) => grouped.set(record.registration, (grouped.get(record.registration) || 0) + Number(record.liters_added)));
+      const entries = Array.from(grouped.entries()).sort((a, b) => b[1] - a[1]);
+      const summaryList = document.getElementById("summary-by-aircraft");
+      summaryList.innerHTML = entries.length ? entries.map(([registration, liters]) => `
+        <div class="record-card">
+          <div class="record-top">
+            <div><div class="reg">${escapeHtml(registration)}</div></div>
+            <div class="summary-value">${liters.toFixed(1)} L</div>
+          </div>
+        </div>
+      `).join("") : '<div class="empty">No aircraft totals yet.</div>';
+    }
+
+    async function addAircraft() {
+      const payload = {
+        registration: normalizeRegistration(document.getElementById("new-aircraft-reg").value),
+        type: document.getElementById("new-aircraft-type").value.trim(),
+        owner: document.getElementById("new-aircraft-owner").value.trim(),
+        capacity_liters: document.getElementById("new-aircraft-capacity").value === "" ? null : Number(document.getElementById("new-aircraft-capacity").value)
+      };
+      if (!payload.registration) {
+        showToast("Aircraft registration is required.");
+        return;
+      }
+      const { error } = await supabaseClient.from("aircraft").upsert(payload, { onConflict: "registration" });
+      if (error) {
+        showToast(error.message || "Could not save aircraft.");
+        return;
+      }
+      ["new-aircraft-reg", "new-aircraft-type", "new-aircraft-owner", "new-aircraft-capacity"].forEach((id) => {
+        document.getElementById(id).value = "";
+      });
+      await fetchState();
+      showToast("Aircraft saved.");
+    }
+
+    function makeXmlCell(value, type = "String") {
+      return `<Cell><Data ss:Type="${type}">${escapeXml(value)}</Data></Cell>`;
+    }
+
+    function exportExcel() {
+      if (!records.length) {
+        showToast("No records to export.");
+        return;
+      }
+      const grouped = new Map();
+      aircraft.forEach((item) => {
+        grouped.set(item.registration, {
+          registration: item.registration,
+          type: item.type || "",
+          owner: item.owner || "",
+          capacity_liters: item.capacity_liters,
+          fuelings: 0,
+          liters: 0
+        });
+      });
+      records.forEach((record) => {
+        if (!grouped.has(record.registration)) {
+          grouped.set(record.registration, {
+            registration: record.registration,
+            type: "",
+            owner: "",
+            capacity_liters: null,
+            fuelings: 0,
+            liters: 0
+          });
+        }
+        const item = grouped.get(record.registration);
+        item.fuelings += 1;
+        item.liters += Number(record.liters_added);
+      });
+      const summaryRows = Array.from(grouped.values()).sort((a, b) => a.registration.localeCompare(b.registration));
+      const totalLiters = summaryRows.reduce((sum, row) => sum + row.liters, 0);
+      const summaryRowsXml = summaryRows.map((row) => `
+        <Row>
+          ${makeXmlCell(row.registration)}
+          ${makeXmlCell(row.type)}
+          ${makeXmlCell(row.owner)}
+          ${row.capacity_liters == null ? makeXmlCell("") : makeXmlCell(Number(row.capacity_liters).toFixed(1), "Number")}
+          ${makeXmlCell(row.fuelings, "Number")}
+          ${makeXmlCell(row.liters.toFixed(1), "Number")}
+        </Row>
+      `).join("");
+      const recordRowsXml = records.map((record) => `
+        <Row>
+          ${makeXmlCell(record.id)}
+          ${makeXmlCell(record.registration)}
+          ${makeXmlCell(record.fueler_name)}
+          ${makeXmlCell(record.pilot_name)}
+          ${makeXmlCell(record.fueled_at)}
+          ${makeXmlCell(record.location || "")}
+          ${makeXmlCell(Number(record.before_liters).toFixed(1), "Number")}
+          ${makeXmlCell(Number(record.after_liters).toFixed(1), "Number")}
+          ${makeXmlCell(Number(record.liters_added).toFixed(1), "Number")}
+          ${makeXmlCell(record.notes || "")}
+          ${makeXmlCell(record.signature_data_url ? "Yes" : "No")}
+        </Row>
+      `).join("");
+      const workbookXml = `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+ <Styles>
+  <Style ss:ID="Header"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#0F6D82" ss:Pattern="Solid"/></Style>
+  <Style ss:ID="Title"><Font ss:Bold="1" ss:Size="14"/></Style>
+ </Styles>
+ <Worksheet ss:Name="Aircraft Summary">
+  <Table>
+   <Row><Cell ss:StyleID="Title"><Data ss:Type="String">Aircraft Fuel Summary</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="String">Total consumed fuel</Data></Cell><Cell><Data ss:Type="Number">${totalLiters.toFixed(1)}</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="String">Tracked planes</Data></Cell><Cell><Data ss:Type="Number">${summaryRows.length}</Data></Cell></Row>
+   <Row><Cell><Data ss:Type="String">Fuelings logged</Data></Cell><Cell><Data ss:Type="Number">${records.length}</Data></Cell></Row>
+   <Row/>
+   <Row>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Registration</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Aircraft Type</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Owner / Operator</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Tank Capacity (L)</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Fuelings</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Total Liters</Data></Cell>
+   </Row>
+   ${summaryRowsXml}
+  </Table>
+ </Worksheet>
+ <Worksheet ss:Name="Fuel Log">
+  <Table>
+   <Row><Cell ss:StyleID="Title"><Data ss:Type="String">Detailed Fuel Log</Data></Cell></Row>
+   <Row/>
+   <Row>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Report ID</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Aircraft</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Fueler Name</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Pilot Name</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Date Time</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Location</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Before Filling (L)</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">After Filling (L)</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Added (L)</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Notes</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Pilot Signed</Data></Cell>
+   </Row>
+   ${recordRowsXml}
+  </Table>
+ </Worksheet>
+</Workbook>`;
+      const blob = new Blob([workbookXml], { type: "application/vnd.ms-excel;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "aircraft-fuel-records.xls";
+      link.click();
+      URL.revokeObjectURL(url);
+      showToast("Excel export created.");
+    }
+
+    function bindEvents() {
+      tabs.forEach((tab) => tab.addEventListener("click", () => switchTab(tab.dataset.tab)));
+      document.getElementById("fuel-before").addEventListener("input", updateAddedPreview);
+      document.getElementById("fuel-after").addEventListener("input", updateAddedPreview);
+      document.getElementById("record-search").addEventListener("input", renderRecords);
+      document.getElementById("refresh-data").addEventListener("click", fetchState);
+      document.getElementById("export-excel").addEventListener("click", exportExcel);
+      document.getElementById("clear-signature").addEventListener("click", resetSignaturePad);
+      document.getElementById("back-to-form").addEventListener("click", () => showStep(1));
+      document.getElementById("save-report").addEventListener("click", saveRecord);
+      document.getElementById("add-aircraft").addEventListener("click", addAircraft);
+      document.getElementById("to-review").addEventListener("click", () => {
+        const form = collectForm();
+        const error = validateForm(form);
+        if (error) {
+          showToast(error);
+          return;
+        }
+        draftReport = form;
+        renderReview(form);
+        resetSignaturePad();
+        showStep(2);
+      });
+      document.getElementById("aircraft-reg").addEventListener("input", (event) => { event.target.value = event.target.value.toUpperCase(); });
+      document.getElementById("fuel-location").addEventListener("input", (event) => { event.target.value = event.target.value.toUpperCase(); });
+      document.getElementById("new-aircraft-reg").addEventListener("input", (event) => { event.target.value = event.target.value.toUpperCase(); });
+    }
+
+    async function init() {
+      setCurrentDateTime();
+      bindEvents();
+      initSignaturePad();
+      resetSignaturePad();
+
+      const cfg = window.FUEL_APP_CONFIG || {};
+      if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
+        document.getElementById("config-warning").style.display = "block";
+        return;
+      }
+
+      supabaseClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+      await fetchState();
+    }
+
+    init().catch((error) => {
+      console.error(error);
+      showToast(error.message || "Could not load app.");
+    });
+  </script>
+</body>
+</html>
